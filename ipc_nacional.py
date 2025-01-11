@@ -3,6 +3,9 @@ import requests
 from io import BytesIO
 from dateutil.relativedelta import relativedelta
 from alphacast import Alphacast
+from dotenv import load_dotenv
+import os
+
 
 
 def descargar_archivo(url):
@@ -145,8 +148,8 @@ def main():
     Punto de entrada principal.
     """
     url = "https://www.indec.gob.ar/ftp/cuadros/economia/sh_ipc_precios_promedio.xls"
-    api_key = "ak_wNg2Uhet4NNGvMgXyv7v" 
-
+    load_dotenv()
+    api_key = os.getenv("API_KEY")
     try:
         # Descargar y procesar los datos
         excel_data = descargar_archivo(url)
