@@ -149,7 +149,7 @@ def main():
     """
     url = "https://www.indec.gob.ar/ftp/cuadros/economia/sh_ipc_precios_promedio.xls"
     load_dotenv()
-    api_key = os.getenv("API_KEY")
+    api_key = os.getenv("api_key")
     try:
         # Descargar y procesar los datos
         excel_data = descargar_archivo(url)
