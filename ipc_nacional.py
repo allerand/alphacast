@@ -6,9 +6,6 @@ from alphacast import Alphacast
 
 
 def descargar_archivo(url):
-    """
-    Descargar archivo desde una URL y devolver un buffer BytesIO.
-    """
     response = requests.get(url)
     if response.status_code == 200:
         print("Archivo descargado exitosamente.")
@@ -18,13 +15,8 @@ def descargar_archivo(url):
 
 
 def procesar_datos(excel_data):
-    """
-    Procesar los datos del archivo Excel y devolver un DataFrame transformado.
-    """
-    # Leer el archivo Excel
-    df = pd.read_excel(excel_data, sheet_name=None)
 
-    # Seleccionar la hoja "Nacional"
+    df = pd.read_excel(excel_data, sheet_name=None)
     if "Nacional" not in df:
         raise ValueError("La hoja 'Nacional' no está disponible en el archivo.")
     df_nacional = df["Nacional"].dropna(axis=1, how="all")
@@ -49,7 +41,6 @@ def procesar_datos(excel_data):
     if pd.isna(fecha_inicial):
         raise ValueError("No se pudo crear la fecha inicial correctamente.")
 
-    # Renombrar columnas
     df_nacional.columns = ["Region", "Product", "Unit"] + list(df_nacional.columns[3:])
 
     # Crear fechas mensuales desde `fecha_inicial`
@@ -68,7 +59,6 @@ def procesar_datos(excel_data):
     df_nacional = df_nacional.loc[4:]
     df_nacional = df_nacional[df_nacional["Product"].notna()].copy()
 
-    # Derretir el DataFrame
     id_vars = ["Region", "Product", "Unit"]
     df_melted = pd.melt(
         df_nacional,
@@ -87,9 +77,6 @@ def procesar_datos(excel_data):
 
 
 def subir_a_alphacast(df, api_key):
-    """
-    Subir datos procesados a Alphacast.
-    """
     alphacast = Alphacast(api_key)
 
     # Verificar si el repositorio ya existe
@@ -108,7 +95,7 @@ def subir_a_alphacast(df, api_key):
     # Si el repositorio no existe, crearlo
     if not repo_id:
         repo_id = alphacast.repository.create(
-            repo_name,  # Nombre del repositorio como primer argumento
+            repo_name,  
             repo_description=repo_description,
             privacy="Private",
             returnIdIfExists=True
