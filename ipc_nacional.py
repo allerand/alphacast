@@ -2,9 +2,13 @@ import pandas as pd
 import requests
 from io import BytesIO
 from dateutil.relativedelta import relativedelta
+from alphacast import Alphacast
 
 
 def descargar_archivo(url):
+    """
+    Descargar archivo desde una URL y devolver un buffer BytesIO.
+    """
     response = requests.get(url)
     if response.status_code == 200:
         print("Archivo descargado exitosamente.")
@@ -82,25 +86,88 @@ def procesar_datos(excel_data):
     return df_melted
 
 
-def construir_nombre_archivo(primer_mes, ultimo_mes):
-    inicio = primer_mes.strftime("%Y-%m") 
-    fin = ultimo_mes.strftime("%Y-%m")
-    return f"Inflation_CPI_SelectedPrices_Region_{inicio}_to_{fin}.csv"
+def subir_a_alphacast(df, api_key):
+    """
+    Subir datos procesados a Alphacast.
+    """
+    alphacast = Alphacast(api_key)
+
+    # Verificar si el repositorio ya existe
+    repo_name = "INDEC Inflation Data"
+    repo_description = "Datos del IPC de Argentina extraídos de INDEC - Hoja Nacional"
+    repositorios = alphacast.repository.read_all()
+
+    # Buscar el repositorio por nombre
+    repo_id = None
+    for repo in repositorios:
+        if repo["name"] == repo_name:
+            repo_id = repo["id"]
+            print(f"Repositorio encontrado con ID: {repo_id}")
+            break
+
+    # Si el repositorio no existe, crearlo
+    if not repo_id:
+        repo_id = alphacast.repository.create(
+            repo_name,  # Nombre del repositorio como primer argumento
+            repo_description=repo_description,
+            privacy="Private",
+            returnIdIfExists=True
+        )
+        print(f"Repositorio creado con ID: {repo_id}")
+
+    # Verificar si el dataset ya existe
+    dataset_name = "IPC Nacional"
+    datasets = alphacast.datasets.read_all()
+    dataset_id = None
+    for dataset in datasets:
+        if dataset["name"] == dataset_name and dataset["repositoryId"] == repo_id:
+            dataset_id = dataset["id"]
+            print(f"Dataset encontrado con ID: {dataset_id}")
+            break
+
+    # Si el dataset no existe, crearlo
+    if not dataset_id:
+        dataset_description = "Precios por región, producto, unidad y fecha extraídos de la hoja 'Nacional' del IPC INDEC."
+        dataset_id = alphacast.datasets.create(
+            dataset_name,
+            repo_id,
+            dataset_description
+        )
+        print(f"Dataset creado con ID: {dataset_id}")
+
+        # Inicializar columnas solo si el dataset es nuevo
+        alphacast.datasets.dataset(dataset_id).initialize_columns(
+            dateColumnName="Date",
+            entitiesColumnNames=["Region", "Product", "Unit"],
+            dateFormat="%Y-%m-%d"
+        )
+        print("Columnas inicializadas.")
+
+    # Subir los datos al dataset
+    alphacast.datasets.dataset(dataset_id).upload_data_from_df(
+        df,
+        deleteMissingFromDB=False,
+        onConflictUpdateDB=True,
+        uploadIndex=False
+    )
+    print("Datos subidos con éxito.")
+
 
 def main():
+    """
+    Punto de entrada principal.
+    """
     url = "https://www.indec.gob.ar/ftp/cuadros/economia/sh_ipc_precios_promedio.xls"
-    
+    api_key = "ak_wNg2Uhet4NNGvMgXyv7v" 
+
     try:
+        # Descargar y procesar los datos
         excel_data = descargar_archivo(url)
         df_melted = procesar_datos(excel_data)
 
-        # Obtener el rango temporal para nombrar el archivo
-        primer_mes = df_melted["Date"].min()
-        ultimo_mes = df_melted["Date"].max()
-        nombre_archivo = construir_nombre_archivo(primer_mes, ultimo_mes)
+        # Subir datos a Alphacast
+        subir_a_alphacast(df_melted, api_key)
 
-        df_melted.to_csv(nombre_archivo, index=False)
-        print(f"Datos procesados y guardados en '{nombre_archivo}'.")
     except Exception as e:
         print(f"Error: {e}")
 

@@ -3,3 +3,4 @@ requests
 openpyxl
 python-dateutil
 xlrd>=2.0.1
+alphacast
